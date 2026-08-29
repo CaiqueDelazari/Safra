@@ -49,16 +49,27 @@ conciliação.
 **Infra**: `docker-compose.prod.yml` (com Redis, worker e beat), Caddyfile,
 `.env.example` da raiz e do backend, Dockerfile do backend.
 
+## Verificações que existem
+
+```bash
+cd backend
+../.venv/Scripts/python.exe manage.py test tests      # 130 testes
+../.venv/Scripts/python.exe manage.py conferir_rotas  # painel x backend
+cd ../frontend && npm run build                       # 23 rotas
+```
+
+O `conferir_rotas` compara cada endereço que o painel chama com as rotas
+registradas no Django. É a costura que não tem dono: o TypeScript não enxerga
+string de URL e o teste de backend não enxerga o que o frontend pede, então
+`/clientes/` de um lado e `/clients/` do outro só apareceria clicando em
+produção.
+
 ## Falta
 
-**Frontend** — telas de apoio, todas seguindo o mesmo padrão das prontas:
-
-- `/clientes/novo` e `/clientes/[id]` (formulário e ficha)
-- `/relatorios` (os endpoints existem: `/reports/cobrancas|pagamentos|inadimplencia|remessas|retornos|rejeicoes`)
-- `/auditoria`, `/empresa`, `/equipe`, `/perfil`
-- Rodar `npm install` e `npm run build` — o frontend ainda **não foi compilado
-  nenhuma vez**, então erros de tipo/import são esperados na primeira
-  compilação.
+**Fluxo ponta a ponta.** As telas compilam e os endereços conferem, mas o
+sistema nunca rodou de verdade com banco: criar empresa, cadastrar cliente,
+gerar lote, subir retorno e ver a cobrança virar paga. É o próximo passo, e
+precisa do Docker no ar (`docker compose up -d`).
 
 **Deploy**
 
