@@ -81,8 +81,11 @@ produção.
 
 **Deploy**
 
-- `deploy/publicar.sh` ainda é o copiado do sistema antigo; precisa apontar
-  para esta pilha.
+- Nada foi publicado ainda: não existe servidor com esta pilha no ar. Os
+  arquivos estão prontos (`docker-compose.prod.yml`, `publicar.sh`,
+  `preparar-env.sh`, `backup.sh`, `Caddyfile`), mas nenhum deles jamais rodou
+  numa máquina de verdade — então o que está "pronto" é o texto, não o
+  procedimento. A primeira publicação é que vai dizer o que falta.
 - Documento de convivência: enquanto o sistema antigo estiver no ar, quem tem
   as portas 80/443 é o Caddy dele — os dois blocos do nosso `Caddyfile` entram
   no Caddyfile daquele projeto, e o serviço `proxy` daqui só sobe (perfil
