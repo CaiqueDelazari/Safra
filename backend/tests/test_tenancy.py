@@ -394,6 +394,48 @@ class CredenciaisTest(BaseAPITest):
         self.assertTrue(bruto.startswith("cif1:"))
         self.assertNotIn("senha-super-secreta", bruto)
 
+    def test_credenciais_da_api_e_certificado_nunca_sao_devolvidos(self):
+        resposta = self.client.post(reverse("v1:bank:bank-account-list"), {
+            "nome": "Safra API", "banco": "422", "agencia": "01234",
+            "conta": "00012345", "carteira": "1", "meio_integracao": "API",
+            "api_client_id": "cliente-da-api",
+            "api_client_secret": "chave-super-secreta",
+            "api_certificado": "-----BEGIN CERTIFICATE-----\nCERTIFICADO\n-----END CERTIFICATE-----",
+            "api_chave_privada": "-----BEGIN PRIVATE KEY-----\nCHAVE\n-----END PRIVATE KEY-----",
+        }, format="json")
+
+        self.assertEqual(resposta.status_code, 201, resposta.data)
+        for campo in ("api_client_id", "api_client_secret", "api_certificado",
+                      "api_chave_privada"):
+            self.assertNotIn(campo, resposta.data)
+        self.assertTrue(resposta.data["api_configurada"])
+        self.assertTrue(resposta.data["certificado_configurado"])
+
+        conta = ContaBancaria.objects.get(pk=resposta.data["id"])
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT api_client_secret, api_certificado, api_chave_privada "
+                "FROM contas_bancarias WHERE id = %s", [conta.pk]
+            )
+            valores = cursor.fetchone()
+        for valor in valores:
+            self.assertTrue(valor.startswith("cif1:"))
+        self.assertNotIn("chave-super-secreta", "".join(valores))
+
+    def test_certificado_e_chave_privada_precisam_entrar_juntos(self):
+        resposta = self.client.post(reverse("v1:bank:bank-account-list"), {
+            "nome": "Safra API", "banco": "422", "agencia": "01234",
+            "conta": "00012345", "carteira": "1", "meio_integracao": "API",
+            "api_client_id": "cliente-da-api",
+            "api_client_secret": "chave-super-secreta",
+            "api_certificado": "-----BEGIN CERTIFICATE-----\nCERTIFICADO\n-----END CERTIFICATE-----",
+        }, format="json")
+
+        self.assertEqual(resposta.status_code, 400)
+        self.assertIn("api_certificado", resposta.data)
+
     def test_salvar_o_cadastro_sem_reenviar_a_senha_nao_a_apaga(self):
         """O formulário reenvia o objeto inteiro e os campos de segredo voltam
         vazios, porque nunca foram exibidos. Sem este cuidado, trocar o nome

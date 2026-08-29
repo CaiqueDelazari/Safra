@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Botao } from "@/components/ui/button";
-import { Campo, Input, Selecao } from "@/components/ui/campos";
+import { AreaTexto, Campo, Input, Selecao } from "@/components/ui/campos";
 import { Dialogo, DialogoConteudo } from "@/components/ui/dialogo";
 import { Secao, TituloPagina } from "@/components/ui/pagina";
 import {
@@ -188,6 +188,8 @@ const VAZIA = {
   sftp_senha: "",
   api_client_id: "",
   api_client_secret: "",
+  api_certificado: "",
+  api_chave_privada: "",
   producao: false,
   ativa: true,
   padrao: false,
@@ -209,6 +211,9 @@ function FormularioConta({
 
   React.useEffect(() => {
     if (!aberto) return;
+    // Cada abertura precisa nascer dos dados atuais e com os segredos vazios;
+    // manter o estado anterior poderia enviar a chave de outra conta.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(conta ? { ...VAZIA, ...conta } : VAZIA);
   }, [aberto, conta]);
 
@@ -372,7 +377,10 @@ function FormularioConta({
 
             {usaApi ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Campo rotulo="client_id">
+                <Campo
+                  rotulo="Identificador da API (client_id)"
+                  dica="Fornecido pelo Safra ao habilitar a API de cobrança."
+                >
                   <Input
                     type="password"
                     autoComplete="off"
@@ -381,13 +389,50 @@ function FormularioConta({
                     onChange={(e) => definir("api_client_id", e.target.value)}
                   />
                 </Campo>
-                <Campo rotulo="client_secret">
+                <Campo
+                  rotulo="Chave da API (client_secret)"
+                  dica="É a key secreta da integração; nunca volta da nossa API."
+                >
                   <Input
                     type="password"
                     autoComplete="off"
                     placeholder={conta?.api_configurada ? "•••• já cadastrado" : ""}
                     value={String(form.api_client_secret ?? "")}
                     onChange={(e) => definir("api_client_secret", e.target.value)}
+                  />
+                </Campo>
+                <Campo
+                  rotulo="Certificado mTLS (PEM)"
+                  dica="Cole o conteúdo completo, incluindo BEGIN CERTIFICATE."
+                  className="sm:col-span-2"
+                >
+                  <AreaTexto
+                    spellCheck={false}
+                    autoComplete="off"
+                    placeholder={
+                      conta?.certificado_configurado
+                        ? "•••• certificado já cadastrado"
+                        : "-----BEGIN CERTIFICATE-----"
+                    }
+                    value={String(form.api_certificado ?? "")}
+                    onChange={(e) => definir("api_certificado", e.target.value)}
+                  />
+                </Campo>
+                <Campo
+                  rotulo="Chave privada do certificado (PEM)"
+                  dica="Cole o conteúdo completo. Ela é cifrada antes de chegar ao banco de dados."
+                  className="sm:col-span-2"
+                >
+                  <AreaTexto
+                    spellCheck={false}
+                    autoComplete="off"
+                    placeholder={
+                      conta?.certificado_configurado
+                        ? "•••• chave privada já cadastrada"
+                        : "-----BEGIN PRIVATE KEY-----"
+                    }
+                    value={String(form.api_chave_privada ?? "")}
+                    onChange={(e) => definir("api_chave_privada", e.target.value)}
                   />
                 </Campo>
               </div>

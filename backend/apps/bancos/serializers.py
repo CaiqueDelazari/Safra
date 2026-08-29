@@ -85,6 +85,19 @@ class ContaBancariaSerializer(TenantModelSerializer):
                         "Sem eles, nenhum título seria registrado."
                     )
                 })
+
+            tem_certificado = dados.get("api_certificado") or getattr(
+                self.instance, "api_certificado", ""
+            )
+            tem_chave = dados.get("api_chave_privada") or getattr(
+                self.instance, "api_chave_privada", ""
+            )
+            if bool(tem_certificado) != bool(tem_chave):
+                raise serializers.ValidationError({
+                    "api_certificado": (
+                        "Certificado mTLS e chave privada precisam ser cadastrados juntos."
+                    )
+                })
         return dados
 
     def update(self, instancia, dados):
