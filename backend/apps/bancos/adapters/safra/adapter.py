@@ -75,14 +75,17 @@ class SafraCnab400(BankAdapter):
                 "codigo_empresa": self._codigo_empresa(),
                 "nome_cedente": cedente["nome"],
                 "data_gravacao": hoje,
+                "numero_arquivo": numero_remessa,
                 "sequencial": 1,
             })
         ]
 
         resultados: list[ResultadoTitulo] = []
-        for indice, titulo in enumerate(titulos, start=1):
+        for titulo in titulos:
             try:
-                linha, resultado = self._detalhe(titulo, sequencial=indice + 1)
+                linha, resultado = self._detalhe(
+                    titulo, sequencial=len(linhas) + 1, numero_arquivo=numero_remessa
+                )
             except Exception as exc:  # noqa: BLE001
                 # Um título com dado impossível não pode derrubar o lote
                 # inteiro: 499 boletos válidos precisam sair. O título ruim
@@ -101,7 +104,13 @@ class SafraCnab400(BankAdapter):
                 "Verifique os erros título a título."
             )
 
-        linhas.append(L.REMESSA_TRAILER.montar({"sequencial": len(linhas) + 1}))
+        incluidos = [t for t, r in zip(titulos, resultados) if r.ok]
+        linhas.append(L.REMESSA_TRAILER.montar({
+            "quantidade_titulos": len(incluidos),
+            "valor_total": sum((Decimal(str(t.valor)) for t in incluidos), Decimal("0")),
+            "numero_arquivo": numero_remessa,
+            "sequencial": len(linhas) + 1,
+        }))
 
         nome = f"CB{hoje:%d%m}{numero_remessa:04d}.REM"
         return ResultadoLote(
@@ -111,7 +120,7 @@ class SafraCnab400(BankAdapter):
             numero_remessa=numero_remessa,
         )
 
-    def _detalhe(self, titulo: Titulo, *, sequencial: int) -> tuple[str, ResultadoTitulo]:
+    def _detalhe(self, titulo: Titulo, *, sequencial: int, numero_arquivo: int) -> tuple[str, ResultadoTitulo]:
         conta = self.conta
         cedente = self._cedente()
         sacado = titulo.sacado
@@ -123,8 +132,6 @@ class SafraCnab400(BankAdapter):
             raise ValueError("Sacado sem CPF/CNPJ.")
 
         numero = zfill(titulo.nosso_numero, livre.TAMANHO_NOSSO_NUMERO)
-        dv = livre.dv_nosso_numero(numero)
-
         # O nosso número precisa caber inteiro no campo do arquivo. Se não
         # couber, o `formatar` cortaria pela esquerda em silêncio e o número
         # transmitido ao banco ficaria diferente do impresso no boleto — o
@@ -145,17 +152,13 @@ class SafraCnab400(BankAdapter):
         # Bairro e cidade entram no mesmo campo de 40 do endereço quando cabem:
         # é o que o banco imprime na ficha de compensação, e sem eles o boleto
         # sai sem referência de entrega.
-        endereco_completo = " - ".join(
-            p for p in [endereco, sacado.bairro, sacado.cidade] if p
-        )
-
         valores = {
             "tipo_inscricao_cedente": "02" if len(cedente["documento"]) == 14 else "01",
             "documento_cedente": cedente["documento"],
             "codigo_empresa": self._codigo_empresa(),
             "uso_empresa": titulo.seu_numero,
             "nosso_numero": numero,
-            "dv_nosso_numero": dv,
+            "carteira": conta.carteira,
             "codigo_ocorrencia": L.OCORRENCIA_REMESSA.get(titulo.ocorrencia, "01"),
             "numero_documento": titulo.documento or titulo.seu_numero,
             "data_vencimento": titulo.vencimento,
@@ -164,22 +167,26 @@ class SafraCnab400(BankAdapter):
             "especie_titulo": L.ESPECIE_TITULO.get(titulo.especie, "99"),
             "aceite": "A" if titulo.aceite else "N",
             "data_emissao": titulo.emissao,
-            "instrucao_1": "09" if titulo.dias_protesto else "00",
-            "instrucao_2": "00",
+            "instrucao_1": "00",
+            "instrucao_2": "10" if titulo.dias_protesto else "00",
+            "instrucao_3": titulo.dias_protesto or 0,
             "juros_mora_dia": self._juros_dia(titulo),
             "data_limite_desconto": titulo.data_limite_desconto or "",
             "valor_desconto": titulo.desconto,
             "valor_iof": Decimal("0"),
-            "valor_abatimento": titulo.abatimento,
+            "valor_abatimento_multa": titulo.abatimento,
             "tipo_inscricao_sacado": "01" if tipo_de_pessoa(sacado.documento) == "F" else "02",
             "documento_sacado": sacado.documento,
             "nome_sacado": sacado.nome,
-            "endereco_sacado": endereco_completo,
-            "primeira_mensagem": "",
-            "cep_sacado": cep[:5],
-            "sufixo_cep_sacado": cep[5:],
-            "sacador_avalista": titulo.instrucoes,
-            "prazo_protesto": titulo.dias_protesto or 0,
+            "endereco_sacado": endereco,
+            "bairro_sacado": sacado.bairro,
+            "cep_sacado": cep,
+            "cidade_sacado": sacado.cidade,
+            "uf_sacado": sacado.uf,
+            "mensagem": titulo.instrucoes,
+            "dias_baixa": getattr(conta, "dias_baixa_automatica", 0),
+            "tipo_desconto": "1" if titulo.desconto else "0",
+            "numero_arquivo": numero_arquivo,
             "sequencial": sequencial,
         }
 
@@ -215,20 +222,10 @@ class SafraCnab400(BankAdapter):
         }
 
     def _codigo_empresa(self) -> str:
-        """As 20 posições que identificam o convênio no arquivo.
-
-        Quando a conta traz `codigo_cedente` preenchido, ele manda — é o valor
-        que o banco entregou na abertura e não há o que deduzir. Sem ele,
-        compõe-se agência + conta + dígito, que é a forma usual; o
-        `preparar_producao` avisa quando o campo está vazio, porque deduzir
-        funciona até o dia em que não funciona.
-        """
+        """Agência (5) + conta de cobrança com dígito (9), manual 05/2026."""
         conta = self.conta
-        if conta.codigo_cedente:
-            return zfill(conta.codigo_cedente, 20)
-        return zfill(
-            zfill(conta.agencia, 5) + zfill(conta.conta, 8) + (conta.conta_dv or "0"), 20
-        )
+        conta_com_dv = so_digitos(conta.conta) + so_digitos(conta.conta_dv or "")
+        return zfill(conta.agencia, 5) + zfill(conta_com_dv, 9)
 
     # ═══════════════════════════════════════════════════════════ boleto
     def gerar_boleto(self, titulo: Titulo) -> ResultadoTitulo:
@@ -273,7 +270,7 @@ class SafraCnab400(BankAdapter):
             codigo_cedente=L.RETORNO_HEADER.ler_texto(primeira, "codigo_empresa"),
             nome_cedente=L.RETORNO_HEADER.ler_texto(primeira, "nome_cedente"),
             data_movimento=L.RETORNO_HEADER.ler_data(primeira, "data_movimento"),
-            numero_arquivo=L.RETORNO_HEADER.ler_int(primeira, "sequencial"),
+            numero_arquivo=L.RETORNO_HEADER.ler_int(primeira, "numero_arquivo"),
         )
 
         registros: list[RegistroRetorno] = []
@@ -301,9 +298,9 @@ class SafraCnab400(BankAdapter):
         R = L.RETORNO_DETALHE
         codigo = R.ler_texto(linha, "codigo_ocorrencia").zfill(2)
         tipo, descricao = oc.traduzir(codigo)
-        motivos = oc.separar_motivos(R.ler(linha, "motivos_rejeicao"))
+        motivos = oc.separar_motivos(R.ler(linha, "codigo_rejeicao"))
 
-        pago = R.ler_decimal(linha, "valor_principal")
+        pago = R.ler_decimal(linha, "valor_pago")
         juros = R.ler_decimal(linha, "juros_mora")
         # Tarifa e despesas saem do crédito, não entram nele. Somá-las ao
         # pagamento infla o faturamento; ignorá-las faz a conciliação nunca
@@ -324,7 +321,7 @@ class SafraCnab400(BankAdapter):
             valor_titulo=R.ler_decimal(linha, "valor_titulo"),
             valor_pago=pago,
             valor_juros=juros,
-            valor_multa=R.ler_decimal(linha, "valor_multa"),
+            valor_multa=Decimal("0"),
             valor_desconto=R.ler_decimal(linha, "valor_desconto"),
             valor_abatimento=R.ler_decimal(linha, "valor_abatimento"),
             valor_tarifa=tarifa,

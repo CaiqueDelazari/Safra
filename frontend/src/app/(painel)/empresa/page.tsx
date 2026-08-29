@@ -45,6 +45,8 @@ export default function PaginaEmpresa() {
 
   React.useEffect(() => {
     if (!empresa) return;
+    // Espelha no formulário o recurso que chegou de forma assíncrona.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(
       Object.fromEntries(
         [

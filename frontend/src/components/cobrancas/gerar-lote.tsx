@@ -63,6 +63,8 @@ export function DialogoGerarLote({
 
   React.useEffect(() => {
     if (!aberto) return;
+    // A abertura inicia uma nova operação de lote.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValidacao(null);
     setProgresso(0);
     setEtapa("");
@@ -80,6 +82,8 @@ export function DialogoGerarLote({
   React.useEffect(() => {
     if (!aberto || !contaId || cobrancas.length === 0) return;
     let ativo = true;
+    // Estado da requisição iniciada por esta sincronização.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValidando(true);
     api
       .post<Validacao>("/batches/validate/", {

@@ -172,7 +172,7 @@ class FluxoCompletoTest(APITestCase):
                 "data_ocorrencia": self.vencimento,
                 "data_credito": self.vencimento + timedelta(days=1),
                 "valor_titulo": cobranca.valor,
-                "valor_principal": cobranca.valor,
+                "valor_pago": cobranca.valor,
                 "valor_tarifa": Decimal("2.50"),
                 "banco_cobrador": "422",
                 "sequencial": indice,

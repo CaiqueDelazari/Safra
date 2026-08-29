@@ -310,16 +310,6 @@ function FormularioConta({
                 onChange={(e) => definir("carteira", e.target.value)}
               />
             </Campo>
-            <Campo
-              rotulo="Código do cedente"
-              dica="O banco fornece na abertura. Sem ele o sistema deduz — e deduzir falha em silêncio."
-              className="sm:col-span-2"
-            >
-              <Input
-                value={String(form.codigo_cedente ?? "")}
-                onChange={(e) => definir("codigo_cedente", e.target.value)}
-              />
-            </Campo>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">

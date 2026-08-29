@@ -12,10 +12,7 @@ inesperada trocaria um problema pequeno (uma ocorrência que ninguém
 interpretou, visível na tela) por um grande (500 pagamentos que não entraram).
 A ocorrência fica gravada em bruto e aparece como pendência.
 
-CONFERIR contra o manual do Safra: os códigos abaixo são os da família CNAB
-400 de cobrança. Os que movem dinheiro — 06, 15, 16, 17 — são os que precisam
-de atenção primeiro, porque um erro ali é a diferença entre dar baixa e não
-dar.
+Tabela conferida contra o manual Safra CNAB 400, versão maio/2026.
 """
 from apps.bancos.bancos import TipoOcorrencia as T
 
@@ -26,22 +23,16 @@ OCORRENCIAS: dict[str, tuple[str, str]] = {
     "04": (T.ALTERACAO_CONFIRMADA, "Transferência de carteira — entrada"),
     "05": (T.BAIXA, "Transferência de carteira — baixa"),
     "06": (T.LIQUIDACAO, "Liquidação normal"),
-    "07": (T.LIQUIDACAO, "Liquidação parcial"),
-    "08": (T.LIQUIDACAO, "Liquidação por conta"),
     "09": (T.BAIXA, "Baixa automática"),
-    "10": (T.BAIXA, "Baixa por liquidação em outra carteira"),
+    "10": (T.BAIXA, "Baixa conforme solicitação do beneficiário"),
     "11": (T.ALTERACAO_CONFIRMADA, "Título em ser (arquivo de posição)"),
     "12": (T.ABATIMENTO_CONCEDIDO, "Abatimento concedido"),
     "13": (T.ABATIMENTO_CANCELADO, "Abatimento cancelado"),
     "14": (T.VENCIMENTO_ALTERADO, "Vencimento alterado"),
     "15": (T.LIQUIDACAO, "Liquidação em cartório"),
-    "16": (T.LIQUIDACAO, "Título pago em cheque"),
-    "17": (T.LIQUIDACAO, "Liquidação após baixa"),
-    "18": (T.ALTERACAO_CONFIRMADA, "Acerto de depositária"),
     "19": (T.PROTESTO, "Confirmação de instrução de protesto"),
     "20": (T.SUSTACAO_PROTESTO, "Confirmação de sustação de protesto"),
-    "21": (T.ALTERACAO_CONFIRMADA, "Confirmação de instrução de não protestar"),
-    "22": (T.ALTERACAO_CONFIRMADA, "Confirmação de instrução de protesto falimentar"),
+    "21": (T.ALTERACAO_CONFIRMADA, "Transferência de beneficiário — conta origem"),
     "23": (T.PROTESTO, "Título enviado a cartório"),
     "24": (T.ALTERACAO_REJEITADA, "Instrução de protesto rejeitada"),
     "25": (T.ALTERACAO_CONFIRMADA, "Alegação do sacado"),
@@ -63,6 +54,9 @@ OCORRENCIAS: dict[str, tuple[str, str]] = {
 #: `motivos_rejeicao`. Só os mais frequentes estão nomeados — os demais
 #: aparecem como o próprio código, que é o que o gerente do banco entende.
 MOTIVOS: dict[str, str] = {
+    "037": "Data de vencimento inválida",
+    "048": "Valor do desconto inválido",
+    "068": "CEP do pagador/beneficiário final não consta na tabela",
     "01": "Código do banco inválido",
     "02": "Código do registro detalhe inválido",
     "03": "Código da ocorrência inválido",
@@ -104,8 +98,8 @@ MOTIVOS: dict[str, str] = {
 #: Códigos que só existem para explicar uma rejeição. Junto com o tipo, é o
 #: que a tela mostra ao operador — "rejeitado: CEP inválido" resolve sozinho,
 #: "rejeitado: 48" manda alguém procurar o manual.
-TAMANHO_MOTIVO = 2
-MAX_MOTIVOS = 5
+TAMANHO_MOTIVO = 3
+MAX_MOTIVOS = 1
 
 
 def traduzir(codigo: str) -> tuple[str, str]:
@@ -115,13 +109,13 @@ def traduzir(codigo: str) -> tuple[str, str]:
 
 
 def separar_motivos(campo: str) -> list[str]:
-    """Quebra o campo de motivos em códigos de dois dígitos, sem os vazios."""
+    """Lê o código de rejeição de três dígitos do retorno Safra."""
     texto = (campo or "").strip()
     motivos = []
     for i in range(0, min(len(texto), TAMANHO_MOTIVO * MAX_MOTIVOS), TAMANHO_MOTIVO):
         pedaco = texto[i:i + TAMANHO_MOTIVO].strip()
         if pedaco and pedaco != "00":
-            motivos.append(pedaco.zfill(2))
+            motivos.append(pedaco.zfill(3))
     return motivos
 
 

@@ -89,7 +89,7 @@ class LiquidacaoTest(BaseRetornoTest):
         "data_ocorrencia": date(2026, 9, 10),
         "data_credito": date(2026, 9, 11),
         "valor_titulo": Decimal("1000.00"),
-        "valor_principal": Decimal("1015.00"),
+        "valor_pago": Decimal("1015.00"),
         "juros_mora": Decimal("15.00"),
         "valor_tarifa": Decimal("2.50"),
     }
@@ -174,13 +174,13 @@ class OutrasOcorrenciasTest(BaseRetornoTest):
 
         self.processar(montar_retorno([{
             "codigo_ocorrencia": "03", "nosso_numero": "123456789",
-            "motivos_rejeicao": "48",
+            "codigo_rejeicao": "068",
         }]))
 
         self.cobranca.refresh_from_db()
         self.assertEqual(self.cobranca.status, StatusCobranca.REJEITADA)
         self.assertIsNone(self.cobranca.lote_id)
-        self.assertIn("CEP inválido", self.cobranca.mensagem_erro)
+        self.assertIn("CEP do pagador", self.cobranca.mensagem_erro)
 
     def test_baixa_nao_desfaz_pagamento(self):
         """Algumas carteiras mandam baixa depois da liquidação. Obedecer
@@ -188,7 +188,7 @@ class OutrasOcorrenciasTest(BaseRetornoTest):
         self.processar(montar_retorno([{
             "codigo_ocorrencia": "06", "nosso_numero": "123456789",
             "data_ocorrencia": date(2026, 9, 10),
-            "valor_principal": Decimal("1000.00"),
+            "valor_pago": Decimal("1000.00"),
         }]))
         self.processar(
             montar_retorno([{"codigo_ocorrencia": "09", "nosso_numero": "123456789"}]),
@@ -246,7 +246,7 @@ class TituloOrfaoTest(BaseRetornoTest):
 
     ORFAO = {
         "codigo_ocorrencia": "06", "nosso_numero": "999999999",
-        "data_ocorrencia": date(2026, 9, 10), "valor_principal": Decimal("500.00"),
+        "data_ocorrencia": date(2026, 9, 10), "valor_pago": Decimal("500.00"),
     }
 
     def test_ocorrencia_fica_gravada_sem_cobranca(self):
@@ -289,7 +289,7 @@ class CasamentoTest(BaseRetornoTest):
         self.processar(montar_retorno([{
             "codigo_ocorrencia": "06", "nosso_numero": "", "uso_empresa": "1",
             "data_ocorrencia": date(2026, 9, 10),
-            "valor_principal": Decimal("1000.00"),
+            "valor_pago": Decimal("1000.00"),
         }]))
 
         self.cobranca.refresh_from_db()
@@ -303,7 +303,7 @@ class CasamentoTest(BaseRetornoTest):
             "codigo_ocorrencia": "06", "nosso_numero": "888888888",
             "uso_empresa": "", "data_ocorrencia": date(2026, 9, 10),
             "valor_titulo": Decimal("1000.00"),
-            "valor_principal": Decimal("1000.00"),
+            "valor_pago": Decimal("1000.00"),
             "data_vencimento": date(2026, 9, 10),
         }]))
 
@@ -333,7 +333,7 @@ class CasamentoTest(BaseRetornoTest):
         self.processar(montar_retorno([{
             "codigo_ocorrencia": "06", "nosso_numero": "777777777",
             "data_ocorrencia": date(2026, 9, 10),
-            "valor_principal": Decimal("1000.00"),
+            "valor_pago": Decimal("1000.00"),
         }]))
 
         alheia.refresh_from_db()
@@ -348,7 +348,7 @@ class ArquivoRepetidoTest(BaseRetornoTest):
         conteudo = montar_retorno([
             {"codigo_ocorrencia": "06", "nosso_numero": "123456789",
              "data_ocorrencia": date(2026, 9, 10),
-             "valor_principal": Decimal("1000.00")}
+             "valor_pago": Decimal("1000.00")}
         ])
         with use_context(empresa_id=self.empresa.pk):
             primeiro, novo1 = RetornoService.registrar_arquivo(

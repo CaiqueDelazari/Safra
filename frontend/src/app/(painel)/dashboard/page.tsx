@@ -20,7 +20,6 @@ import {
   YAxis,
 } from "recharts";
 
-import { StatusCobrancaBadge } from "@/components/cobrancas/status";
 import { Botao } from "@/components/ui/button";
 import { CardIndicador, Secao, TituloPagina } from "@/components/ui/pagina";
 import { Cabecalho, Corpo, Linha, Tabela, Td, Th, Vazio } from "@/components/ui/tabela";

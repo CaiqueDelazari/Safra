@@ -227,6 +227,8 @@ function FormularioPessoa({
 
   React.useEffect(() => {
     if (!aberto) return;
+    // Reinicializa o formulário ao abrir para outra pessoa.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       nome_completo: pessoa?.nome_completo ?? "",
       email: pessoa?.email ?? "",

@@ -2,6 +2,7 @@
 
 import { Save } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -50,6 +51,7 @@ type Campos = typeof VAZIO;
  * segundo aqui em vez de um ciclo de cobrança lá.
  */
 export function FormularioCliente({ cliente }: { cliente?: Cliente }) {
+  const router = useRouter();
   const [form, setForm] = React.useState<Campos>(() => ({
     ...VAZIO,
     ...(cliente
@@ -63,7 +65,11 @@ export function FormularioCliente({ cliente }: { cliente?: Cliente }) {
 
   function definir(campo: keyof Campos, valor: string) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
-    setErros(({ [campo]: _, ...resto }) => resto);
+    setErros((atual) => {
+      const proximo = { ...atual };
+      delete proximo[campo];
+      return proximo;
+    });
   }
 
   /** Preenche o endereço pelo CEP. Falha em silêncio — é conveniência. */
@@ -95,7 +101,7 @@ export function FormularioCliente({ cliente }: { cliente?: Cliente }) {
         ? await api.patch<Cliente>(`/clients/${cliente.id}/`, form)
         : await api.post<Cliente>("/clients/", form);
       toast.success(cliente ? "Cliente atualizado." : `Cliente ${salvo.codigo} criado.`);
-      window.location.href = `/clientes/${salvo.id}`;
+      router.push(`/clientes/${salvo.id}`);
     } catch (erro) {
       if (erro instanceof ApiError && erro.corpo && typeof erro.corpo === "object") {
         // O backend devolve erro por campo; mostrar cada um ao lado do seu

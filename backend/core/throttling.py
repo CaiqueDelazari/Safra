@@ -5,7 +5,7 @@ O padrão anterior era só `ScopedRateThrottle`: quem não declarasse
 ou repetir `refresh` à vontade, com um token válido e um laço de shell.
 
 As duas classes abaixo fecham esse buraco por baixo, sem atropelar quem já tem
-escopo próprio — o webhook do Asaas e a entrega de mídia precisam de tetos
+escopo próprio — integrações bancárias e a entrega de mídia precisam de tetos
 muito mais altos que o de uma tela.
 """
 from hashlib import sha256

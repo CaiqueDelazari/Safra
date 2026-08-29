@@ -71,7 +71,7 @@ class SegundoFator(TimeStampedModel):
         return registro
 
     def uri(self) -> str:
-        emissor = getattr(settings, "NOME_DO_SISTEMA", "ERP Monitoramento")
+        emissor = getattr(settings, "NOME_DO_SISTEMA", "Plataforma de Cobranças")
         return pyotp.TOTP(self.segredo).provisioning_uri(
             name=self.usuario.email, issuer_name=emissor
         )

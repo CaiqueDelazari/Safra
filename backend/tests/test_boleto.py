@@ -113,7 +113,7 @@ class ValorTest(SimpleTestCase):
 
 
 class CodigoDeBarrasTest(SimpleTestCase):
-    CAMPO_LIVRE = "7" + "01234" + "00012345" + "000000001" + "8" + "2"
+    CAMPO_LIVRE = "7" + "01234" + "000123456" + "000000001" + "2"
 
     def setUp(self):
         self.barras = montar_codigo_barras(
@@ -125,6 +125,13 @@ class CodigoDeBarrasTest(SimpleTestCase):
 
     def test_quarenta_e_quatro_posicoes(self):
         self.assertEqual(len(self.barras), 44)
+
+    def test_exemplo_oficial_safra_maio_2026(self):
+        barras = montar_codigo_barras(
+            banco="422", vencimento=date(2025, 2, 23), valor=Decimal("180.84"),
+            campo_livre="7" + "00400" + "000278247" + "261730011" + "2",
+        )
+        self.assertEqual(barras, "42296100100000180847004000002782472617300112")
 
     def test_estrutura(self):
         self.assertEqual(self.barras[0:3], "422")       # banco
@@ -153,7 +160,7 @@ class LinhaDigitavelTest(SimpleTestCase):
             banco="422",
             vencimento=date(2026, 9, 10),
             valor=Decimal("1234.56"),
-            campo_livre="7" + "01234" + "00012345" + "000000001" + "8" + "2",
+            campo_livre="7" + "01234" + "000123456" + "000000001" + "2",
         )
         self.linha = linha_digitavel(self.barras)
 
@@ -199,26 +206,12 @@ class CampoLivreSafraTest(SimpleTestCase):
         class ContaFalsa:
             agencia = "1234"
             conta = "567890"
+            conta_dv = "1"
 
         livre = campo_livre.montar(ContaFalsa(), "42")
         self.assertEqual(len(livre), 25)
         self.assertTrue(livre.startswith("7"))
         self.assertTrue(livre.endswith("2"))
-
-    def test_dv_do_nosso_numero_e_um_digito(self):
-        from apps.bancos.adapters.safra.campo_livre import dv_nosso_numero
-
-        for numero in ("000000001", "123456789", "999999999", "000000042"):
-            dv = dv_nosso_numero(numero)
-            self.assertEqual(len(dv), 1, numero)
-            self.assertTrue(dv.isdigit(), numero)
-
-    def test_dv_e_deterministico(self):
-        """O mesmo número dá sempre o mesmo dígito — é o que permite recalcular
-        o boleto sem guardar o DV."""
-        from apps.bancos.adapters.safra.campo_livre import dv_nosso_numero
-
-        self.assertEqual(dv_nosso_numero("123456789"), dv_nosso_numero("123456789"))
 
     def test_extrai_o_nosso_numero_de_volta(self):
         from apps.bancos.adapters.safra import campo_livre
@@ -226,6 +219,7 @@ class CampoLivreSafraTest(SimpleTestCase):
         class ContaFalsa:
             agencia = "1234"
             conta = "567890"
+            conta_dv = "1"
 
         livre = campo_livre.montar(ContaFalsa(), "123456789")
         self.assertEqual(campo_livre.extrair_nosso_numero(livre), "123456789")

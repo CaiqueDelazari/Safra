@@ -176,14 +176,6 @@ class Command(BaseCommand):
                     "registrados de verdade."
                 )
 
-            if not conta.codigo_cedente:
-                avisos.append(
-                    f"{rotulo}: sem 'código do cedente'. O sistema o deduz de "
-                    "agência+conta, o que funciona em muitos convênios e falha "
-                    "em silêncio nos outros — a remessa volta recusada. "
-                    "Confirme o valor com o gerente."
-                )
-
             folga = conta.nosso_numero_maximo - conta.proximo_nosso_numero
             if folga < FOLGA_MINIMA_NOSSO_NUMERO:
                 bloqueios.append(

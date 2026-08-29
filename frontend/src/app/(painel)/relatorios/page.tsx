@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/campos";
 import { Filtros, Secao, TituloPagina } from "@/components/ui/pagina";
 import { Cabecalho, Corpo, Linha, Tabela, Td, Th, Vazio } from "@/components/ui/tabela";
 import { api, armazenamento } from "@/lib/api";
-import type { Pagina } from "@/lib/tipos";
 import { data, moeda, numero } from "@/lib/utils";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";

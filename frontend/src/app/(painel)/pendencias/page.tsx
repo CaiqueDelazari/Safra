@@ -8,7 +8,6 @@ import {
   MapPinOff,
   Send,
   TriangleAlert,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 

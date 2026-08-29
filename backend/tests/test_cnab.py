@@ -204,8 +204,10 @@ class RemessaTest(SimpleTestCase):
         self.assertEqual(R.ler_decimal(detalhe, "valor_titulo"), Decimal("1234.56"))
         self.assertEqual(R.ler_texto(detalhe, "documento_sacado"), "12345678000195")
         self.assertEqual(R.ler_texto(detalhe, "nome_sacado"), "JOSE DA SILVA COMERCIO ME")
-        self.assertEqual(R.ler_texto(detalhe, "cep_sacado"), "01310")
-        self.assertEqual(R.ler_texto(detalhe, "sufixo_cep_sacado"), "100")
+        self.assertEqual(R.ler_texto(detalhe, "cep_sacado"), "01310100")
+        self.assertEqual(R.ler_texto(detalhe, "bairro_sacado"), "CENTRO")
+        self.assertEqual(R.ler_texto(detalhe, "cidade_sacado"), "SAO PAULO")
+        self.assertEqual(R.ler_texto(detalhe, "uf_sacado"), "SP")
         self.assertEqual(R.ler_texto(detalhe, "codigo_ocorrencia"), "01")
 
     def test_sequencial_cresce_e_o_trailer_fecha_a_conta(self):
@@ -303,7 +305,7 @@ class RetornoTest(SimpleTestCase):
             "data_ocorrencia": date(2026, 9, 10),
             "data_credito": date(2026, 9, 11),
             "valor_titulo": Decimal("1234.56"),
-            "valor_principal": Decimal("1240.00"),
+            "valor_pago": Decimal("1240.00"),
             "juros_mora": Decimal("5.44"),
             "valor_tarifa": Decimal("2.50"),
             "banco_cobrador": "341",
@@ -326,13 +328,12 @@ class RetornoTest(SimpleTestCase):
         conteudo = self._arquivo([{
             "codigo_ocorrencia": "03",
             "nosso_numero": "123456789",
-            "motivos_rejeicao": "4816",
+            "codigo_rejeicao": "037",
         }])
         registro = self.adapter.processar_retorno(conteudo).registros[0]
 
         self.assertEqual(registro.tipo, "ENTRADA_REJEITADA")
-        self.assertEqual(registro.motivos, ["48", "16"])
-        self.assertIn("CEP inválido", registro.motivos_descricao)
+        self.assertEqual(registro.motivos, ["037"])
         self.assertIn("Data de vencimento inválida", registro.motivos_descricao)
 
     def test_ocorrencia_desconhecida_nao_derruba_o_arquivo(self):
@@ -342,7 +343,7 @@ class RetornoTest(SimpleTestCase):
         conteudo = self._arquivo([
             {"codigo_ocorrencia": "97", "nosso_numero": "1"},
             {"codigo_ocorrencia": "06", "nosso_numero": "2",
-             "valor_principal": Decimal("10.00")},
+             "valor_pago": Decimal("10.00")},
         ])
         retorno = self.adapter.processar_retorno(conteudo)
 
@@ -355,7 +356,7 @@ class RetornoTest(SimpleTestCase):
         título errado — o pior desfecho possível."""
         from apps.bancos.adapters.base import ArquivoInvalido
 
-        conteudo = self._arquivo([]).replace(b"422BANCO SAFRA", b"341BANCO ITAU  ")
+        conteudo = self._arquivo([]).replace(b"422BANCO", b"341BANCO")
         with self.assertRaises(ArquivoInvalido) as erro:
             self.adapter.processar_retorno(conteudo)
         self.assertIn("341", str(erro.exception))
