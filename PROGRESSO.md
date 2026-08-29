@@ -1,8 +1,9 @@
 # Onde paramos
 
-Sessões de 28 e 29/08/2026. Backend completo e testado, frontend completo e
-compilando. O que falta é exercitar o sistema inteiro com banco no ar, e a
-conferência do layout CNAB contra o manual do Safra.
+Sessões de 28 e 29/08/2026. Backend e frontend completos, com o fluxo do
+cadastro ao pagamento provado por teste. O que falta para valer em produção é
+a conferência do layout CNAB contra o manual do Safra, que só quem tem o
+convênio consegue fazer.
 
 Repositório: https://github.com/CaiqueDelazari/Safra
 
@@ -29,7 +30,7 @@ cd backend && ../.venv/Scripts/python.exe -m celery -A config worker -l info -Q 
 
 ## Feito
 
-**Backend (Django 5.1 + DRF + Celery + Postgres)** — 130 testes passando.
+**Backend (Django 5.1 + DRF + Celery + Postgres)** — 133 testes passando.
 
 - Multiempresa de verdade: papel por vínculo (a mesma pessoa é administradora
   numa empresa e consulta em outra), isolamento na leitura *e* na escrita.
@@ -57,10 +58,18 @@ perfil.
 
 ```bash
 cd backend
-../.venv/Scripts/python.exe manage.py test tests      # 130 testes
+../.venv/Scripts/python.exe manage.py test tests      # 133 testes
 ../.venv/Scripts/python.exe manage.py conferir_rotas  # painel x backend
 cd ../frontend && npm run build                       # 23 rotas
 ```
+
+`tests/test_fluxo_completo.py` percorre a história inteira pela API: cadastra
+clientes, cria cobranças, gera o lote, lê o arquivo de remessa que saiu, monta
+o retorno **com o nosso número que a remessa gravou** e confere que as
+cobranças viram PAGA sozinhas e que a conciliação fecha. É esse detalhe que
+faz o teste valer: se a remessa escrever o número numa posição e o parser ler
+de outra, o casamento falha ali — em produção, isso apareceria como "o cliente
+pagou e o sistema não viu".
 
 O `conferir_rotas` compara cada endereço que o painel chama com as rotas
 registradas no Django. É a costura que não tem dono: o TypeScript não enxerga
@@ -69,11 +78,6 @@ string de URL e o teste de backend não enxerga o que o frontend pede, então
 produção.
 
 ## Falta
-
-**Fluxo ponta a ponta.** As telas compilam e os endereços conferem, mas o
-sistema nunca rodou de verdade com banco: criar empresa, cadastrar cliente,
-gerar lote, subir retorno e ver a cobrança virar paga. É o próximo passo, e
-precisa do Docker no ar (`docker compose up -d`).
 
 **Deploy**
 
