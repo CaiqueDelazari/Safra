@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 import { useSessao } from "@/providers/sessao";
 
 const ROTULO_PAPEL: Record<string, string> = {
-  MASTER: "Acesso total",
+  ADMINISTRADOR: "Administrador",
   FINANCEIRO: "Financeiro",
-  TECNICO: "Técnico",
+  OPERADOR: "Operador",
+  CONSULTA: "Consulta",
 };
 
 export function BarraLateral({
@@ -113,9 +114,12 @@ export function BarraLateral({
               {usuario?.nome_completo}
             </p>
             <p className="text-[11.5px] text-texto-tenue">
-              {usuario?.desenvolvedor
-                ? "Desenvolvedor"
-                : ROTULO_PAPEL[usuario?.papel ?? ""] ?? usuario?.papel}
+              {/* O papel é da EMPRESA ATIVA, não do usuário: a mesma pessoa
+                  pode ser administradora aqui e consulta na empresa do
+                  cliente dela. Trocar de empresa no seletor muda este texto. */}
+              {usuario?.plataforma_admin
+                ? "Suporte da plataforma"
+                : (ROTULO_PAPEL[usuario?.papel ?? ""] ?? usuario?.papel ?? "—")}
             </p>
           </div>
         </div>

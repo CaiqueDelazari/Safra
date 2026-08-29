@@ -148,10 +148,17 @@ export default function PaginaDashboard() {
                       background: "var(--fundo-elevado)",
                       fontSize: 13,
                     }}
-                    formatter={(valor: number, _nome, item) => [
-                      `${moeda(valor)} · ${item.payload.quantidade} pagamentos`,
-                      "Recebido",
-                    ]}
+                    // A assinatura do `formatter` mudou no Recharts 3 e os
+                    // tipos ficaram largos demais para inferir aqui. O que
+                    // interessa é o payload da barra, que é nosso.
+                    formatter={(valor, _nome, item) => {
+                      const linha = (item as { payload?: { quantidade?: number } })
+                        ?.payload;
+                      return [
+                        `${moeda(Number(valor))} · ${linha?.quantidade ?? 0} pagamentos`,
+                        "Recebido",
+                      ];
+                    }}
                   />
                   <Bar dataKey="valor" fill="var(--acento)" radius={[5, 5, 0, 0]} />
                 </BarChart>
