@@ -1,0 +1,43 @@
+# Django fica na série 5.1: a 5.1.15 corrige todas as CVEs abertas (inclusive a
+# injeção de SQL crítica, CVE-2025-64459) sem o salto para a 5.2, que traz
+# mudanças de comportamento.
+Django==5.1.15
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.6.0
+django-filter==24.3
+psycopg[binary]==3.2.3
+python-decouple==3.8
+requests==2.33.0
+# Cifra dos segredos guardados no banco (core/cripto.py) — aqui, as
+# credenciais bancárias. Fernet: AES-128-CBC com HMAC, sem inventar
+# criptografia.
+cryptography==50.0.0
+drf-spectacular==0.28.0
+gunicorn==23.0.0
+whitenoise==6.8.2
+# Segundo fator: TOTP e o QR do cadastro (SVG, sem depender do Pillow).
+pyotp==2.10.0
+qrcode==8.2
+# Logo da empresa e avatar. É o único ponto que processa imagem de origem
+# externa, e por isso a versão importa: a 11.0.0 tem execução de código via
+# PSD malicioso (CVE-2026-42311).
+Pillow==12.3.0
+
+# ── Fila ────────────────────────────────────────────────────────────────────
+# Trabalho pesado nunca na requisição: lote, remessa e retorno rodam em worker.
+celery[redis]==5.4.0
+# O cliente Redis serve a dois papéis: broker do Celery e cache do Django
+# (`django.core.cache.backends.redis`, que já vem no Django — não é preciso
+# django-redis). É no cache que vive o lock que impede dois workers
+# processarem o mesmo arquivo de retorno ao mesmo tempo, e o `add` do backend
+# nativo é atômico (SET NX), que é a única propriedade de que o lock depende.
+redis==5.2.1
+
+# ── Integração bancária ─────────────────────────────────────────────────────
+# Transmissão de remessa e coleta de retorno por SFTP. Opcional na prática: a
+# maioria dos convênios opera por download/upload no internet banking, e o
+# sistema funciona sem isto — ver apps/bancos/transporte.py.
+paramiko==3.5.0
+# Importação de carteira em .xlsx. CSV não precisa de dependência nenhuma.
+openpyxl==3.1.5

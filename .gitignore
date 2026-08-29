@@ -1,0 +1,39 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+backend/media/
+backend/staticfiles/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Ambiente
+.env
+.env.local
+.env.*.local
+# Cópias do .env feitas antes de mexer nele (deploy, rotação de chave):
+# carregam SECRET_KEY, senha do banco e chave de cifragem em claro.
+# Os .env.example continuam versionados — o padrão abaixo não os alcança.
+.env.bak*
+
+# Dumps do banco gerados por deploy/backup.sh — nunca vão para o repositório.
+backups/
+
+# Editores / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Permissões do Claude Code: configuração pessoal da máquina, com caminhos
+# absolutos e IDs de sessão. Nada de secreto, mas nada que sirva a outro clone.
+.claude/settings.local.json
+.claude/settings.json
+
+# Carimbos escritos no servidor (prova de restauração testada). São do host,
+# não do código: cada instalação tem os seus.
+estado/

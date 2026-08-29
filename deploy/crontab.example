@@ -1,0 +1,30 @@
+# Agendamento do ERP de Monitoramento.
+# Instale no servidor com:  crontab -e   (e cole o conteúdo abaixo)
+#
+# Substitua /opt/erp pelo caminho onde o projeto foi clonado.
+# Os comandos são idempotentes: se um dia falhar, o do dia seguinte corrige.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Rotinas diárias às 06:00 — marca vencidos, gera o ciclo do ano, avisa
+# vencimentos, sinaliza ordens atrasadas, despacha WhatsApp, reprocessa
+# webhooks e limpa notificações antigas.
+0 6 * * * cd /opt/erp && docker compose -f docker-compose.prod.yml run --rm backend python manage.py rotinas >> /var/log/erp-rotinas.log 2>&1
+
+# Reprocessamento de webhooks a cada hora — pega o que o Asaas reenviou
+# enquanto o sistema estava fora do ar.
+30 * * * * cd /opt/erp && docker compose -f docker-compose.prod.yml run --rm backend python manage.py rotinas --somente webhooks >> /var/log/erp-rotinas.log 2>&1
+
+# Avisos operacionais de WhatsApp a cada 10 minutos: "você recebeu a OS X",
+# "a OS Y foi atualizada". Sem gateway configurado, apenas registra no log.
+*/10 * * * * cd /opt/erp && docker compose -f docker-compose.prod.yml run --rm backend python manage.py rotinas --somente whatsapp >> /var/log/erp-rotinas.log 2>&1
+
+# Backup do banco todo dia às 03:00: cifrado, retenção local de 14 dias e
+# cópia fora do servidor quando BACKUP_DESTINO_REMOTO estiver configurado.
+# O comando sai com erro se pedirem envio externo de um backup em claro —
+# então vale conferir este log de vez em quando.
+0 3 * * * cd /opt/erp && ./deploy/backup.sh >> /var/log/erp-backup.log 2>&1
+
+# Renovação de imagens e limpeza do Docker, aos domingos.
+0 4 * * 0 docker image prune -af --filter "until=168h" > /dev/null 2>&1

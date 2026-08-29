@@ -1,0 +1,33 @@
+# Desenvolvimento: só a infraestrutura. A aplicação roda na máquina, com
+# `manage.py runserver` e `celery -A config worker`, porque recarregar código
+# dentro de contêiner em Windows é lento o bastante para atrapalhar.
+#
+#   docker compose up -d
+#   cd backend && python manage.py migrate && python manage.py runserver
+#   cd backend && celery -A config worker -l info -Q padrao,lotes,retorno
+#
+# As portas são deslocadas (55432 / 56379) de propósito: nesta máquina já
+# existe um PostgreSQL nativo escutando em 5432, e o Windows deixa os dois
+# "bindarem" sem erro — o que conecta é o nativo, e a mensagem que aparece é
+# "autenticação falhou", que manda procurar senha errada em vez de porta
+# ocupada. Meia hora perdida por padrão de porta. Os valores estão em
+# backend/.env.exemplo-dev.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cobrancas
+      POSTGRES_USER: cobrancas
+      POSTGRES_PASSWORD: cobrancas
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "56379:6379"
+
+volumes:
+  postgres_dev:

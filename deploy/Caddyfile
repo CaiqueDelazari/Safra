@@ -1,0 +1,80 @@
+# Certificado TLS emitido e renovado automaticamente pelo Caddy.
+# Os domínios vêm do .env da raiz (DOMINIO_PAINEL e DOMINIO_API).
+#
+# Enquanto o sistema anterior ainda estiver no ar na mesma VPS, este arquivo
+# NÃO é usado: quem tem as portas 80/443 é o Caddy dele, e os dois blocos
+# abaixo devem ser copiados para o Caddyfile daquele projeto (ver
+# deploy/conviver-com-sistema-antigo.md). Dois Caddys na mesma máquina
+# brigam pela porta e nenhum dos dois sobe.
+
+{$DOMINIO_PAINEL} {
+	encode zstd gzip
+	reverse_proxy frontend:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		# O token de acesso vive no localStorage do painel: qualquer script
+		# estranho que rode nesta página o lê — e aqui esse token dá acesso à
+		# carteira de cobrança inteira. A CSP é o que impede um script estranho
+		# de rodar, e de mandar para fora o que leu.
+		#
+		# 'unsafe-inline' em script-src é imposição do Next.js, que injeta o
+		# bootstrap de hidratação inline sem nonce. O ganho real está em
+		# script-src não aceitar host externo e em connect-src só deixar sair
+		# para a própria API.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://{$DOMINIO_API}; font-src 'self' data:; connect-src 'self' https://{$DOMINIO_API}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+}
+
+{$DOMINIO_API} {
+	encode zstd gzip
+
+	# Corpo de requisição: acima disto o proxy corta antes de chegar ao Django.
+	# Precisa ficar ACIMA do maior upload que a aplicação aceita
+	# (UPLOAD_ARQUIVO_BANCO_MAX_MB, hoje 64), senão o proxy corta primeiro e o
+	# operador recebe um erro seco em vez da mensagem explicando o limite —
+	# num arquivo de retorno grande, que é justamente o caso legítimo.
+	request_body {
+		max_size 80MB
+	}
+
+	# Estáticos do admin do Django. Arquivo de retorno, remessa e boleto NÃO
+	# estão aqui: saem por /api/v1/midia/<token>/, com assinatura que caduca
+	# (core/midia.py). Servir /media/ como diretório deixaria a carteira de
+	# cobrança de um cliente aberta a quem adivinhasse o nome do arquivo.
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	handle {
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+			# Upload de retorno grande demora; o padrão de 30s cortaria no meio.
+			transport http {
+				read_timeout 180s
+				write_timeout 180s
+			}
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

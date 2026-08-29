@@ -1,0 +1,190 @@
+# Produção — a mesma VPS que já roda o sistema anterior.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Nada além do Caddy escuta na internet: banco, Redis e aplicação ficam na rede
+# interna. Os nomes de projeto, volume e rede são próprios (COMPOSE_PROJECT_NAME
+# no .env), então esta pilha convive com a anterior na mesma máquina sem
+# disputar volume nem porta — o Caddy é quem separa, por domínio.
+#
+# IMPORTANTE: as portas 80 e 443 só podem pertencer a UM proxy na máquina.
+# Enquanto os dois sistemas convivem, quem publica é o Caddy do sistema
+# antigo, com os domínios novos acrescentados ao Caddyfile dele
+# (deploy/Caddyfile-conviver.md explica). O serviço `proxy` daqui sobe só
+# depois que o sistema antigo sair do ar.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Sem `ports`: o banco não é acessível de fora do servidor.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # `appendonly` ligado: o broker guarda tarefas que ainda não foram
+    # executadas. Sem persistência, um restart do Redis perderia os lotes na
+    # fila — e "gerar 500 boletos" viraria silêncio.
+    command: >
+      redis-server --appendonly yes --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    # Bloco dobrado com todas as linhas alinhadas: linha mais indentada que a
+    # primeira preservaria a quebra e o gunicorn subiria sem `--bind`,
+    # escutando só em 127.0.0.1 dentro do contêiner.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput &&
+      gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+      --threads 2 --timeout 120 --access-logfile - --error-logfile -"
+    env_file: ./backend/.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      BANCO_DIR_ENTRADA: /app/banco/entrada
+      BANCO_DIR_SAIDA: /app/banco/saida
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+      - banco_arquivos:/app/banco
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  # Worker: monta remessa, processa retorno, importa planilha, manda e-mail.
+  # Mesma imagem do backend de propósito — ver o Dockerfile.
+  #
+  # Concorrência 2 numa VPS pequena: as tarefas são de I/O e banco, não de CPU,
+  # e cada processo carrega o Django inteiro na memória. Subir isso sem medir
+  # troca throughput por swap.
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: >
+      celery -A config worker
+      --loglevel=info
+      --concurrency=${CELERY_CONCURRENCY:-2}
+      --queues=padrao,lotes,retorno
+      --max-tasks-per-child=200
+    env_file: ./backend/.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      BANCO_DIR_ENTRADA: /app/banco/entrada
+      BANCO_DIR_SAIDA: /app/banco/saida
+    volumes:
+      - media_data:/app/media
+      - banco_arquivos:/app/banco
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  # Agendador: varre retornos, marca vencidas, recolhe arquivo preso.
+  # Um só, sempre — dois beats disparariam cada rotina em dobro.
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info
+    env_file: ./backend/.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+    depends_on:
+      - backend
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  # Só sobe quando esta pilha for a dona das portas 80/443 — ou seja, depois
+  # que o sistema anterior sair do ar. Até lá, use o perfil para mantê-lo
+  # parado:  docker compose -f docker-compose.prod.yml --profile proxy up -d
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["proxy"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO_PAINEL: ${DOMINIO_PAINEL}
+      DOMINIO_API: ${DOMINIO_API}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # media_data não entra aqui de propósito: arquivo enviado (retorno
+      # bancário, boleto) só sai pela aplicação, com link assinado.
+      - static_data:/srv/static:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  static_data:
+  banco_arquivos:
+  caddy_data:
+  caddy_config:

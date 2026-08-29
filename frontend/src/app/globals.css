@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Sistema visual: preto e vermelho. Estrutura e texto em quase-preto, vermelho
+   como única cor de ação. Muito branco, bordas sutis, sem sombras pesadas.
+
+   Os neutros têm um viés quente mínimo (matiz ~35) em vez do cinza azulado de
+   antes: cinza puro ao lado de vermelho parece cinza que ninguém escolheu.
+
+   O erro continua vermelho — é convenção universal e trocar confunde mais que
+   ajuda. Ele se separa da marca por ser mais escuro e mais frio (matiz 12
+   contra 27), e por nunca aparecer como botão sólido. Vale lembrar que neste
+   sistema a cor nunca viaja sozinha: todo indicador leva texto e ícone junto.
+
+   Tudo espelhado para dark mode.
+--------------------------------------------------------------------------- */
+:root {
+  --fundo: oklch(0.985 0.002 40);
+  --fundo-elevado: oklch(1 0 0);
+  --superficie: oklch(1 0 0);
+  --superficie-sutil: oklch(0.975 0.004 40);
+  --borda: oklch(0.918 0.006 40);
+  --borda-forte: oklch(0.86 0.009 40);
+  --texto: oklch(0.19 0.012 35);
+  --texto-suave: oklch(0.50 0.012 35);
+  --texto-tenue: oklch(0.64 0.01 35);
+  --acento: oklch(0.50 0.20 27);
+  --acento-suave: oklch(0.955 0.025 27);
+  --acento-texto: oklch(1 0 0);
+  --positivo: oklch(0.58 0.14 155);
+  --positivo-suave: oklch(0.95 0.035 155);
+  --negativo: oklch(0.46 0.17 12);
+  --negativo-suave: oklch(0.952 0.03 12);
+  --atencao: oklch(0.72 0.15 75);
+  --atencao-suave: oklch(0.96 0.04 85);
+  --neutro-suave: oklch(0.955 0.005 40);
+  --anel: oklch(0.50 0.20 27 / 0.35);
+  --raio: 0.875rem;
+}
+
+.dark {
+  --fundo: oklch(0.15 0.008 35);
+  --fundo-elevado: oklch(0.19 0.01 35);
+  --superficie: oklch(0.20 0.01 35);
+  --superficie-sutil: oklch(0.24 0.01 35);
+  --borda: oklch(0.29 0.012 35);
+  --borda-forte: oklch(0.36 0.014 35);
+  --texto: oklch(0.96 0.004 40);
+  --texto-suave: oklch(0.72 0.01 35);
+  --texto-tenue: oklch(0.58 0.01 35);
+  --acento: oklch(0.66 0.18 27);
+  --acento-suave: oklch(0.30 0.08 27);
+  --acento-texto: oklch(0.14 0.01 35);
+  --positivo: oklch(0.7 0.14 155);
+  --positivo-suave: oklch(0.28 0.06 155);
+  --negativo: oklch(0.62 0.17 12);
+  --negativo-suave: oklch(0.28 0.07 12);
+  --atencao: oklch(0.78 0.14 80);
+  --atencao-suave: oklch(0.3 0.06 80);
+  --neutro-suave: oklch(0.26 0.01 35);
+  --anel: oklch(0.66 0.18 27 / 0.4);
+}
+
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-fundo-elevado: var(--fundo-elevado);
+  --color-superficie: var(--superficie);
+  --color-superficie-sutil: var(--superficie-sutil);
+  --color-borda: var(--borda);
+  --color-borda-forte: var(--borda-forte);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-texto-tenue: var(--texto-tenue);
+  --color-acento: var(--acento);
+  --color-acento-suave: var(--acento-suave);
+  --color-acento-texto: var(--acento-texto);
+  --color-positivo: var(--positivo);
+  --color-positivo-suave: var(--positivo-suave);
+  --color-negativo: var(--negativo);
+  --color-negativo-suave: var(--negativo-suave);
+  --color-atencao: var(--atencao);
+  --color-atencao-suave: var(--atencao-suave);
+  --color-neutro-suave: var(--neutro-suave);
+  --radius-card: var(--raio);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--borda);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--fundo);
+    color: var(--texto);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  /* Números tabulares onde valores se alinham em coluna. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: var(--acento-suave);
+    color: var(--texto);
+  }
+  *:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+}
+
+/* Scrollbar discreta — o conteúdo é o protagonista. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--borda-forte);
+  border-radius: 999px;
+  border: 3px solid var(--fundo);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--texto-tenue);
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.surgir {
+  animation: surgir 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulsar {
+  50% {
+    opacity: 0.45;
+  }
+}
+.carregando {
+  animation: pulsar 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
