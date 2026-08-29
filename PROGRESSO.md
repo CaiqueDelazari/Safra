@@ -1,7 +1,10 @@
 # Onde paramos
 
-Sessão de 28/08/2026. Backend **completo e testado**; frontend com o núcleo
-pronto e algumas telas de apoio faltando.
+Sessões de 28 e 29/08/2026. Backend completo e testado, frontend completo e
+compilando. O que falta é exercitar o sistema inteiro com banco no ar, e a
+conferência do layout CNAB contra o manual do Safra.
+
+Repositório: https://github.com/CaiqueDelazari/Safra
 
 ## Como voltar a rodar
 
@@ -39,12 +42,13 @@ cd backend && ../.venv/Scripts/python.exe -m celery -A config worker -l info -Q 
   e rotinas agendadas (varrer retornos, marcar vencidas, recolher preso).
 - Comandos: `criar_admin`, `preparar_producao`, `conferir_layout`.
 
-**Frontend (Next 16)** — telas prontas:
-dashboard, pendências, clientes (lista + importação de planilha), cobranças
-(lista com seleção em massa e geração de lote), cobrança nova (individual e
-mensalidade em lote), cobrança detalhe, lotes (lista + detalhe com progresso),
-retornos (upload e reprocessamento), remessas, contas bancárias, pagamentos,
-conciliação.
+**Frontend (Next 16)** — 23 rotas, `npm run build` limpo:
+dashboard, pendências, clientes (lista, cadastro, ficha e importação de
+planilha), cobranças (lista com seleção em massa e geração de lote, cadastro
+individual e mensalidade em lote, detalhe com boleto), lotes (lista e detalhe
+com progresso), retornos (upload e reprocessamento), remessas, contas
+bancárias, pagamentos, conciliação, relatórios, auditoria, empresa, equipe,
+perfil.
 
 **Infra**: `docker-compose.prod.yml` (com Redis, worker e beat), Caddyfile,
 `.env.example` da raiz e do backend, Dockerfile do backend.
