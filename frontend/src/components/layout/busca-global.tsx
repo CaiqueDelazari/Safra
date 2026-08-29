@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSignature, Receipt, Search, Users, Wrench } from "lucide-react";
+import { Receipt, Search, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -9,7 +9,7 @@ import { useDebounce } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 interface Resultado {
-  tipo: "cliente" | "ordem" | "contrato" | "cobranca";
+  tipo: "cliente" | "cobranca";
   id: number;
   titulo: string;
   subtitulo: string;
@@ -17,19 +17,55 @@ interface Resultado {
   status: string;
 }
 
+interface RespostaBusca {
+  clientes: Array<{
+    id: number;
+    codigo: string;
+    nome: string;
+    documento: string;
+    status: string;
+  }>;
+  cobrancas: Array<{
+    id: number;
+    numero: number;
+    cliente: string;
+    descricao: string;
+    valor: string;
+    vencimento: string;
+    status: string;
+  }>;
+}
+
 const ICONES = {
   cliente: Users,
-  ordem: Wrench,
-  contrato: FileSignature,
   cobranca: Receipt,
 };
 
 const GRUPOS: Record<Resultado["tipo"], string> = {
   cliente: "Clientes",
-  ordem: "Ordens de serviço",
-  contrato: "Contratos",
   cobranca: "Cobranças",
 };
+
+function normalizarResultados(dados: RespostaBusca): Resultado[] {
+  return [
+    ...dados.clientes.map((cliente) => ({
+      tipo: "cliente" as const,
+      id: cliente.id,
+      titulo: cliente.nome,
+      subtitulo: [cliente.codigo, cliente.documento].filter(Boolean).join(" · "),
+      url: `/clientes/${cliente.id}`,
+      status: cliente.status,
+    })),
+    ...dados.cobrancas.map((cobranca) => ({
+      tipo: "cobranca" as const,
+      id: cobranca.id,
+      titulo: `Cobrança #${cobranca.numero} · ${cobranca.cliente}`,
+      subtitulo: `${cobranca.descricao} · vence ${cobranca.vencimento}`,
+      url: `/cobrancas/${cobranca.id}`,
+      status: cobranca.status,
+    })),
+  ];
+}
 
 export function BuscaGlobal() {
   const router = useRouter();
@@ -56,9 +92,9 @@ export function BuscaGlobal() {
   React.useEffect(() => {
     if (!consulta) return;
     api
-      .get<{ resultados: Resultado[] }>("/busca/", { q: consulta })
+      .get<RespostaBusca>("/busca/", { q: consulta })
       .then((dados) => {
-        setResposta({ consulta, itens: dados.resultados });
+        setResposta({ consulta, itens: normalizarResultados(dados) });
         setDestaque(0);
         setAberto(true);
       })
@@ -119,7 +155,7 @@ export function BuscaGlobal() {
         onChange={(e) => setTermo(e.target.value)}
         onFocus={() => resultados.length && setAberto(true)}
         onKeyDown={teclado}
-        placeholder="Buscar cliente, telefone, OS, endereço…"
+        placeholder="Buscar cliente, CPF, cobrança ou boleto…"
         className="h-9.5 w-full rounded-lg border border-borda bg-superficie-sutil pr-3 pl-9 text-sm placeholder:text-texto-tenue focus:border-acento focus:bg-superficie focus:ring-4 focus:ring-[var(--anel)] focus:outline-none sm:pr-14"
       />
       {/* No celular não há teclado com Ctrl: o atalho só atrapalharia o texto. */}

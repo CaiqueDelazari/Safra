@@ -47,10 +47,9 @@ segredo() {
 
 SECRET_KEY="$(segredo 64)"
 SENHA_BANCO="$(segredo 32)"
-TOKEN_ASAAS="$(segredo 40)"
 
-# Chave da cifra dos segredos guardados no banco (a API key do Asaas de cada
-# empresa). Formato Fernet: 32 bytes em base64 url-safe. Gerada aqui, e não
+# Chave da cifra das credenciais bancárias guardadas no banco. Formato Fernet:
+# 32 bytes em base64 url-safe. Gerada aqui, e não
 # derivada da SECRET_KEY, para que trocar a SECRET_KEY um dia não torne as
 # chaves das empresas ilegíveis.
 CAMPOS_CHAVE="$(head -c 32 /dev/urandom | base64 -w0 | tr '+/' '-_')"
@@ -70,13 +69,18 @@ cat > .env <<EOF
 # Gerado por deploy/preparar-env.sh em $(date '+%d/%m/%Y %H:%M').
 # Usado apenas pelo docker-compose.prod.yml.
 
+COMPOSE_PROJECT_NAME=cobrancas
+
 DOMINIO_PAINEL=$PAINEL
 DOMINIO_API=$API
 API_URL=https://$API/api/v1
 
-POSTGRES_DB=erp_monitoramento
-POSTGRES_USER=erp
+POSTGRES_DB=cobrancas
+POSTGRES_USER=cobrancas
 POSTGRES_PASSWORD=$SENHA_BANCO
+
+REDIS_MAXMEMORY=256mb
+CELERY_CONCURRENCY=2
 
 # Cifragem do backup. A chave PRIVADA correspondente está em chave-backup.txt
 # e precisa sair deste servidor.
@@ -85,7 +89,7 @@ BACKUP_CHAVE_PRIVADA=
 BACKUP_SENHA=
 
 # Cópia fora do servidor: crie um remoto com \`rclone config\` e aponte aqui.
-#   BACKUP_DESTINO_REMOTO=b2:erp-backups/producao
+#   BACKUP_DESTINO_REMOTO=b2:cobrancas-backups/producao
 BACKUP_DESTINO_REMOTO=
 EOF
 chmod 600 .env
@@ -102,12 +106,8 @@ trocar ALLOWED_HOSTS "$API"
 trocar CORS_ALLOWED_ORIGINS "https://$PAINEL"
 trocar URL_API "https://$API"
 trocar URL_PAINEL "https://$PAINEL"
-trocar POSTGRES_HOST "db"
-trocar POSTGRES_PORT "5432"
 trocar POSTGRES_PASSWORD "$SENHA_BANCO"
 trocar CAMPOS_CHAVE "$CAMPOS_CHAVE"
-trocar ASAAS_BASE_URL "https://api.asaas.com/v3"
-trocar ASAAS_WEBHOOK_TOKEN "$TOKEN_ASAAS"
 chmod 600 backend/.env
 
 echo
@@ -139,6 +139,5 @@ AVISO — 'age' não está instalado, então o backup ficaria em claro e
 
 EOF
 fi
-echo "Falta preencher à mão em backend/.env, quando tiver:"
-echo "  WHATSAPP_* (opcional — desligado, os avisos ficam como SIMULADA)"
-echo "A API key do Asaas não vai em arquivo: é cadastrada por empresa no painel."
+echo "Antes de publicar, configure o e-mail em backend/.env se o sistema for"
+echo "enviar boletos aos clientes e rode: python manage.py preparar_producao"

@@ -99,7 +99,7 @@ if [ "${1:-}" = "restaurar" ]; then
 fi
 
 # ------------------------------------------------------------------ backup
-BRUTO="$DESTINO/erp-$(date +%Y%m%d-%H%M%S).sql.gz"
+BRUTO="$DESTINO/cobrancas-$(date +%Y%m%d-%H%M%S).sql.gz"
 
 # --clean --if-exists deixa o dump pronto para restaurar sobre uma base existente.
 $COMPOSE exec -T db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
@@ -135,7 +135,7 @@ if [ -n "${BACKUP_DESTINO_REMOTO:-}" ]; then
   # apagar remoto daqui daria ao servidor invadido o poder de apagar o backup.
 fi
 
-find "$DESTINO" -name 'erp-*.sql.gz*' -mtime "+$RETENCAO_DIAS" -delete
+find "$DESTINO" -name 'cobrancas-*.sql.gz*' -mtime "+$RETENCAO_DIAS" -delete
 
 if [ "$ARQUIVO" = "$BRUTO" ]; then
   echo "AVISO: backup EM CLARO. A carteira inteira do cliente está legível em" >&2
@@ -143,4 +143,4 @@ if [ "$ARQUIVO" = "$BRUTO" ]; then
 fi
 
 echo "[$(date '+%d/%m/%Y %H:%M')] backup OK: $ARQUIVO ($TAMANHO)"
-echo "  backups guardados: $(find "$DESTINO" -name 'erp-*.sql.gz*' | wc -l)"
+echo "  backups guardados: $(find "$DESTINO" -name 'cobrancas-*.sql.gz*' | wc -l)"

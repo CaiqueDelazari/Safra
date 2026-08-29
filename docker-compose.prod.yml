@@ -10,7 +10,7 @@
 # IMPORTANTE: as portas 80 e 443 só podem pertencer a UM proxy na máquina.
 # Enquanto os dois sistemas convivem, quem publica é o Caddy do sistema
 # antigo, com os domínios novos acrescentados ao Caddyfile dele
-# (deploy/Caddyfile-conviver.md explica). O serviço `proxy` daqui sobe só
+# (deploy/conviver-com-sistema-antigo.md explica). O serviço `proxy` daqui sobe só
 # depois que o sistema antigo sair do ar.
 services:
   db:
